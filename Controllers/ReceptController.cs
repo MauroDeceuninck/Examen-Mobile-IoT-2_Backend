@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ReceptenApi.Models;
-using System.Collections.Generic;
 
 namespace ReceptenApi.Controllers
 {
@@ -8,36 +8,48 @@ namespace ReceptenApi.Controllers
     [Route("api/[controller]")]
     public class ReceptController : ControllerBase
     {
-        private static readonly List<Recept> Recepten = new List<Recept>();
+        private readonly ReceptenDbContext _context;
 
-        [HttpGet]
-        public IActionResult GetRecepten()
+        public ReceptController(ReceptenDbContext context)
         {
-            return Ok(Recepten);
+            _context = context;
         }
 
-        [HttpGet("{index}")]
-        public IActionResult GetRecept(int index)
+        [HttpGet]
+        public async Task<IActionResult> GetRecepten()
         {
-            if (index < 0 || index >= Recepten.Count)
+            var recepten = await _context.Recepten.Include(r => r.Ingredienten).ToListAsync();
+            return Ok(recepten);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetRecept(int id)
+        {
+            var recept = await _context.Recepten.Include(r => r.Ingredienten).FirstOrDefaultAsync(r => r.Id == id + 1);
+
+            if (recept == null)
             {
-                return NotFound("Recept niet gevonden.");
+                return NotFound();
             }
 
-            return Ok(Recepten[index]);
+            return Ok(recept);
         }
 
 
         [HttpPost]
-        public IActionResult AddRecept([FromBody] Recept recept)
+        public async Task<IActionResult> AddRecept([FromBody] Recept recept)
         {
-            if (recept == null || string.IsNullOrEmpty(recept.Naam))
+            if (recept == null)
             {
-                return BadRequest("Ongeldig recept.");
+                return BadRequest("Recept is ongeldig.");
             }
 
-            Recepten.Add(recept);
-            return CreatedAtAction(nameof(GetRecepten), recept);
+            _context.Recepten.Add(recept);
+            await _context.SaveChangesAsync();
+
+            // Ensure that the route name matches the route for GetRecept
+            return CreatedAtAction(nameof(GetRecept), new { id = recept.Id }, recept);
         }
+
     }
 }
