@@ -16,6 +16,18 @@ namespace ReceptenApi.Controllers
             return Ok(Recepten);
         }
 
+        [HttpGet("{index}")]
+        public IActionResult GetRecept(int index)
+        {
+            if (index < 0 || index >= Recepten.Count)
+            {
+                return NotFound("Recept niet gevonden.");
+            }
+
+            return Ok(Recepten[index]);
+        }
+
+
         [HttpPost]
         public IActionResult AddRecept([FromBody] Recept recept)
         {
